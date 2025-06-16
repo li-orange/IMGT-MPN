@@ -1,4 +1,4 @@
-# IMGT-MPN-
+# IMGT-MPN
 This README provides an overview of the experiment workflow, including the runtime environment, configuration files, and the dataset required for the model.
 ## 1. Environment Setup
 
