@@ -9,7 +9,7 @@ channels:
 dependencies:
 - setuptools=69.5.1
 - cudatoolkit=11.1  
-- cudnn=8.9.2.26+cuda11_0
+- cudnn=8.9.2.26=cuda11_0
 - python>=3.8
 - python-dateutil=2.8.0
 - pip=19.2.3
