@@ -7,6 +7,7 @@ channels:
 - anaconda
 - defaults
 dependencies:
+- setuptools=69.5.1
 - cudatoolkit=11.1  
 - cudnn=8.9.2.26cuda11_0
 - python>=3.8
