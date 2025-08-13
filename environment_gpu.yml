@@ -13,13 +13,13 @@ dependencies:
 - python-dateutil=2.8.0
 - pip=19.2.3
 - pytorch=1.10.0+cu111
-- torchvision==0.7.0  
-- pillow==6.1
+- torchvision==0.11.0  
+- pillow==10.3.0
 - dgl-cuda11.1=0.9.1
 - numpy=1.24.4
-- matplotlib=3.1.0
+- matplotlib=3.5.0
 - tensorboard=2.16.0
-- tensorboardx=2.6.2.2
+- tensorboardx=2.6.2
 - future=1.0.0
 - absl-py
 - networkx=2.8.8
@@ -35,7 +35,7 @@ dependencies:
 - jupyter=1.0.0
 - jupyter_client=8.6.1
 - jupyter_console=6.6.3
-- jupyter_core=0.10.0
+- jupyter_core=5.7.2
 - plotly=5.22.0
 - scikit-image=0.19.3
 - requests==2.31.0
