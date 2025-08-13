@@ -43,6 +43,7 @@ dependencies:
 - rdkit==2024.3.2
 - setuptools=69.5.1
 - protobuf=4.25.3
+- mkl=2023.1.0
 - pip:
   - tensorflow-gpu==2.1.0
   - tensorflow-estimator==2.1.0
