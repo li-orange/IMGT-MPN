@@ -1,0 +1,51 @@
+{
+    "gpu": {
+        "use": true,
+        "id": 0
+    },
+    
+    "model": "GCNATT",
+    "dataset": "ClinTox",
+    "datasets": ["FreeSolv", "Lipophilicity", "ESOL"],
+
+    "out_dir": "out/molecules_graph_regression/",
+    
+    "params": {
+        "seed": 41,
+        "epochs": 200,
+        "batch_size": 16,
+        "init_lr": 1e-3,
+        "lr_reduce_factor": 0.5,
+        "lr_schedule_patience": 10,
+        "min_lr": 1e-5,
+        "weight_decay": 0.0,
+        "print_epoch_interval": 5,
+        "max_time": 12,
+        "patience": 30
+    },
+    
+    "net_params": {
+        "in_atom_feat_dim":27,
+        "in_bond_feat_dim":12,
+        "L": 4,
+        "hidden_dim": 64,
+        "out_dim": 64,
+        "residual": true,
+        "edge_feat": true,
+        "readout": "mean", 
+        "in_feat_dropout": 0.0,
+        "dropout": 0.1,
+        "batch_norm": true,
+        "pos_enc": true,
+        "pos_enc_dim": 10,
+        "use_gru": true,
+
+        "use_transformer": true,
+        "attention_heads": 8,
+        "attention_layers": 3,
+
+        "use_moe": true,
+        "num_experts": 8,
+        "num_experts_per_tok": 2
+    }
+}
