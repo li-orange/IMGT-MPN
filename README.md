@@ -1,19 +1,10 @@
-# IMGT-MPN
-This README provides an overview of the experiment workflow, including the runtime environment, configuration files, and the dataset required for the model.
+# IMGT-MPNN
+IMGT-MPNN is a molecular graph neural network framework for molecule property prediction. This README provides an overview of the workflow, including environment setup, quick start, configuration files, datasets, and how to use your own data.
+
 ## 1. Environment Setup
+We recommend starting from a fresh conda/micromamba environment with Python 3.8.
 
-### 1.1 Create Virtual Environment
-
-#### 1.1.1 Create a new `conda` virtual environment and install the required packages:
-   `conda env create -f environment_gpu.yml`
-The environment_gpu.yml file lists the required packages.
-
-#### 1.1.2 Install Missing Packages
-If you encounter missing packages during execution, you can install them using pip or conda:
-
-pip install <package_name> 
-or
-conda install <package_name>
+👉 Please follow the detailed INSTALL.md guide for the step-by-step installation process, including required packages and the correct installation order.
 
 ## 2. Run Main Program
 Once the virtual environment is activated, run the main program:
