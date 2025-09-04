@@ -65,7 +65,6 @@ pip install dgl-cu111==0.9.1.post1 -f https://data.dgl.ai/wheels/repo.html
 ```
 ### 4.4 Install other dependencies
 ```bash
-pip install tensorboard==2.16.2
 pip install ogb==1.3.6 torch-geometric==2.1.0 torch-scatter==2.0.9 \
     torch-sparse==0.6.12 torch-cluster==1.5.9 torch-spline-conv==1.2.1
 pip install dgllife==0.3.2
