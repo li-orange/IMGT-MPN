@@ -1,50 +1,23 @@
-
-
-
-
-
 """
     IMPORTING LIBS
 """
-import dgl
-
 import numpy as np
 import os
-import socket
 import time
-import random
-import glob
 import argparse, json
-import pickle
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from tensorboardX import SummaryWriter
-from tqdm import tqdm
-
 from pathlib import Path
-
-class DotDict(dict):
-    def __init__(self, **kwds):
-        self.update(kwds)
-        self.__dict__ = self
-
-
-
 
 """
     IMPORTING CUSTOM MODULES/METHODS
 """
 from nets.load_net import gnn_model # import all GNNS
 from data.data import LoadData # import dataset
-
-from itertools import cycle, islice
-
 
 """
     GPU Setup
@@ -60,7 +33,6 @@ def gpu_setup(use_gpu, gpu_id):
         print('cuda not available')
         device = torch.device("cpu")
     return device
-
 
 
 def load_datasets(args, config):
@@ -168,11 +140,6 @@ def interleaved_data_loader(data_loaders):
         if all(exhausted_loaders):
             print("所有数据集都已经被完全消费，训练结束。")
             break
-
-  
-
-
-
 
 """
     VIEWING MODEL CONFIG AND PARAMS
@@ -309,319 +276,6 @@ def train_val_pipeline_interleaved(MODEL_NAME, datasets, params, net_params, dir
     
 
     print(f"Total training time: {time.time() - t0:.2f}s")
-
-
-
-def train_val_pipeline_new(MODEL_NAME, datasets, params, net_params, dirs):
-    """
-    训练和验证流水线，支持多个数据集交替训练
-    参数:
-        MODEL_NAME: 模型名称
-        datasets: 多个数据集对象列表
-        params: 训练参数
-        net_params: 网络参数
-        dirs: 日志和检查点目录
-    """
-    t0 = time.time()
-    root_log_dir, root_ckpt_dir, write_file_name, write_config_file = dirs
-    device = net_params['device']
-
-    # 数据预处理
-    for dataset in datasets:
-        preprocess_dataset(dataset, MODEL_NAME, net_params, t0)
-
-    # 创建每个数据集的 DataLoader
-    train_loaders = [
-        DataLoader(dataset.train, batch_size=params['batch_size'], shuffle=True, collate_fn=dataset.collate)
-        for dataset in datasets
-    ]
-    val_loaders = [
-        DataLoader(dataset.val, batch_size=params['batch_size'], shuffle=False, collate_fn=dataset.collate)
-        for dataset in datasets
-    ]
-    test_loaders = [
-        DataLoader(dataset.test, batch_size=params['batch_size'], shuffle=False, collate_fn=dataset.collate)
-        for dataset in datasets
-    ]
-
-    # 初始化模型和优化器
-    model = gnn_model(MODEL_NAME, net_params).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=params['init_lr'], weight_decay=params['weight_decay'])
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='min', factor=params['lr_reduce_factor'], patience=params['lr_schedule_patience'], verbose=True
-    )
-
-    # 保存最佳模型的性能
-    best_val_auc = [0] * len(datasets)
-    best_test_auc = [0] * len(datasets)
-    patience_counters = [0] * len(datasets)
-
-    # 记录日志
-    writer = SummaryWriter(log_dir=root_log_dir)
-
-    # 训练循环
-    from train.train_molecules_graph_regression import train_epoch_sparse_new as train_epoch, evaluate_network_sparse_new as evaluate_network
-    for epoch in range(params['epochs']):
-        print(f"\nEpoch {epoch + 1}/{params['epochs']}")
-
-        # 交替训练多个数据集
-        epoch_train_losses = []
-        for idx, train_loader in enumerate(train_loaders):
-            # 使用 train_epoch 训练当前数据集
-            epoch_loss, _, optimizer, train_auc = train_epoch(
-                model, optimizer, device, train_loader, epoch, net_params['num_tasks'], net_params['task_type'], idx )
-            print(f"Dataset {idx}: Train Loss: {epoch_loss:.4f}, Train AUC: {train_auc:.4f}")
-            epoch_train_losses.append(epoch_loss)
-
-        # 验证和测试
-        for idx, (val_loader, test_loader) in enumerate(zip(val_loaders, test_loaders)):
-            val_loss, _ , val_auc = evaluate_network(model, device, val_loader, net_params['num_tasks'], net_params['task_type'], dataset_idx=idx, test_val_flag='val')
-            test_loss, _, test_auc = evaluate_network(model, device, test_loader, net_params['num_tasks'], net_params['task_type'], dataset_idx=idx, test_val_flag='test')
-
-            print(f"Dataset {idx}: Val Loss: {val_loss:.4f}, Val AUC: {val_auc:.4f}")
-            print(f"Dataset {idx}: Test Loss: {test_loss:.4f}, Test AUC: {test_auc:.4f}")
-
-            # 保存最佳模型
-            if test_auc > best_test_auc[idx]:
-                best_val_auc[idx] = val_auc
-                best_test_auc[idx] = test_auc
-                model_path = os.path.join(root_ckpt_dir, f"best_model_dataset_{idx}.pth")
-                # 确保目录存在
-                os.makedirs(os.path.dirname(model_path), exist_ok=True)
-                torch.save(model.state_dict(), model_path)
-                print(f"保存最佳模型: {model_path}")
-                patience_counters[idx] = 0  # 重置耐心计数器
-            else:
-                patience_counters[idx] += 1
-
-            # 学习率调度
-            scheduler.step(val_loss)
-
-        # 早停检查：当所有数据集的耐心计数器都达到阈值时，停止训练
-        if all(counter >= params['patience'] for counter in patience_counters):
-            print("所有数据集的早停条件均已满足，训练提前终止。")
-            break
-
-    # 输出最终结果
-    print("\n训练完成，最佳结果：")
-    for idx, dataset in enumerate(datasets):
-        print(f"Dataset {dataset.name}: Best Val AUC: {best_val_auc[idx]:.4f}, Best Test AUC: {best_test_auc[idx]:.4f}")
-
-    print(f"Total training time: {time.time() - t0:.2f}s")
-
-
-
-def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
-    t0 = time.time()
-    per_epoch_time = []
-        
-    DATASET_NAME = dataset.name
-    
-    if DATASET_NAME =='BACE':
-        dataset_idx = 0
-    elif DATASET_NAME =='BBBP':
-        dataset_idx = 1
-    elif DATASET_NAME =='ClinTox':
-        dataset_idx = 2
-    
-    if MODEL_NAME in ['GCN', 'GAT']:
-        if net_params['self_loop']:
-            print("[!] Adding graph self-loops for GCN/GAT models (central node trick).")
-            dataset._add_self_loops()
-            
-    if MODEL_NAME in ['GatedGCN','PNA','MPNN']:
-        if net_params['pos_enc']:
-            print("[!] Adding graph positional encoding.")
-            dataset._add_positional_encodings(net_params['pos_enc_dim'])
-            print('Time PE:',time.time()-t0)
-        
-    trainset, valset, testset = dataset.train, dataset.val, dataset.test
-        
-    root_log_dir, root_ckpt_dir, write_file_name, write_config_file = dirs
-    device = net_params['device']
-    
-    # Write the network and optimization hyper-parameters in folder config/
-    with open(write_config_file + '.txt', 'w') as f:
-        f.write("""Dataset: {},\nModel: {}\n\nparams={}\n\nnet_params={}\n\n\nTotal Parameters: {}\n\n"""                .format(DATASET_NAME, MODEL_NAME, params, net_params, net_params['total_param']))
-        
-    log_dir = os.path.join(root_log_dir, "RUN_" + str(0))
-    writer = SummaryWriter(log_dir=log_dir)
-
-    # setting seeds
-    random.seed(params['seed'])
-    np.random.seed(params['seed'])
-    torch.manual_seed(params['seed'])
-    if device.type == 'cuda':
-        torch.cuda.manual_seed(params['seed'])
-    
-    print("Training Graphs: ", len(trainset))
-    print("Validation Graphs: ", len(valset))
-    print("Test Graphs: ", len(testset))
-
-    model = gnn_model(MODEL_NAME, net_params)
-    model = model.to(device)
-
-    if False:
-        # If you are continuing training from a saved model (e.g., from the previous dataset)
-        prev_model_path = 'benchmarking-gnns-master/out/molecules_graph_regression/checkpoints/dataset_1/best_model_dataset1_BBBP.pth'  # Path to the model you want to load
-        if os.path.exists(prev_model_path):
-            print(f"Loading model weights from {prev_model_path}")
-            model.load_state_dict(torch.load(prev_model_path))
-        else:
-            print(f"Starting with a new model, no weights loaded.")
-
-
-    optimizer = optim.Adam(model.parameters(), lr=params['init_lr'], weight_decay=params['weight_decay'])
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
-                                                     factor=params['lr_reduce_factor'],
-                                                     patience=params['lr_schedule_patience'],
-                                                     verbose=True)
-    
-    epoch_train_losses, epoch_val_losses = [], []
-    epoch_train_MAEs, epoch_val_MAEs = [], [] 
-    
-    # batching exception for Diffpool
-    drop_last = True if MODEL_NAME == 'DiffPool' else False
-    
-    if MODEL_NAME in ['RingGNN', '3WLGNN']:
-        # import train functions specific for WLGNNs
-        from train.train_molecules_graph_regression import train_epoch_dense as train_epoch, evaluate_network_dense as evaluate_network
-        from functools import partial # util function to pass edge_feat to collate function
-
-        train_loader = DataLoader(trainset, shuffle=True, collate_fn=partial(dataset.collate_dense_gnn, edge_feat=net_params['edge_feat']))
-        val_loader = DataLoader(valset, shuffle=False, collate_fn=partial(dataset.collate_dense_gnn, edge_feat=net_params['edge_feat']))
-        test_loader = DataLoader(testset, shuffle=False, collate_fn=partial(dataset.collate_dense_gnn, edge_feat=net_params['edge_feat']))
-        
-    else:
-        # import train functions for all other GNNs
-        from train.train_molecules_graph_regression import train_epoch_sparse as train_epoch, evaluate_network_sparse as evaluate_network
-        
-        train_loader = DataLoader(trainset, batch_size=params['batch_size'], shuffle=True, drop_last=drop_last, collate_fn=dataset.collate)
-        val_loader = DataLoader(valset, batch_size=params['batch_size'], shuffle=False, drop_last=drop_last, collate_fn=dataset.collate)
-        test_loader = DataLoader(testset, batch_size=params['batch_size'], shuffle=False, drop_last=drop_last, collate_fn=dataset.collate)
-    
-    # At any point you can hit Ctrl + C to break out of training early.
-    try:
-        best_train_auc = 0
-        best_val_auc = 0 
-        best_test_auc = 0
-        patience = params['patience']
-        counter = 0
-        with tqdm(range(params['epochs'])) as t:
-            for epoch in t:
-
-                t.set_description('Epoch %d' % epoch)
-
-                start = time.time()
-
-                if MODEL_NAME in ['RingGNN', '3WLGNN']: # since different batch training function for RingGNN
-                    epoch_train_loss, epoch_train_mae, optimizer, train_auc = train_epoch(model, optimizer, device, train_loader, epoch, params['batch_size'], dataset_idx)
-                else:   # for all other models common train function 
-                    epoch_train_loss, epoch_train_mae, optimizer, train_auc = train_epoch(model, optimizer, device, train_loader, epoch, net_params['num_tasks'], net_params['task_type'], dataset_idx )
-                    
-                epoch_val_loss, epoch_val_mae, val_auc = evaluate_network(model, device, val_loader, epoch, net_params['num_tasks'], net_params['task_type'], dataset_idx, 'val')
-                _, epoch_test_mae, test_auc = evaluate_network(model, device, test_loader, epoch, net_params['num_tasks'], net_params['task_type'], dataset_idx, 'test')
-
-                epoch_train_losses.append(epoch_train_loss)
-                epoch_val_losses.append(epoch_val_loss)
-                epoch_train_MAEs.append(epoch_train_mae)           
-                epoch_val_MAEs.append(epoch_val_mae)                 
-
-                writer.add_scalar('train/_loss', epoch_train_loss, epoch)
-                writer.add_scalar('val/_loss', epoch_val_loss, epoch)
-                #writer.add_scalar('train/_mae', epoch_train_mae, epoch)
-                #writer.add_scalar('val/_mae', epoch_val_mae, epoch)
-                #writer.add_scalar('test/_mae', epoch_test_mae, epoch)
-                writer.add_scalar('learning_rate', optimizer.param_groups[0]['lr'], epoch)
-                writer.add_scalar('train__auc', train_auc, epoch)
-                writer.add_scalar('val_auc', val_auc, epoch)
-                writer.add_scalar('test_auc', test_auc, epoch)
-
-                t.set_postfix(time=time.time()-start, lr=optimizer.param_groups[0]['lr'],
-                              train_loss=epoch_train_loss, val_loss=epoch_val_loss,train_AUC=train_auc, 
-                              val_AUC=val_auc,test_AUC=test_auc)
-                """
-                t.set_postfix(time=time.time()-start, lr=optimizer.param_groups[0]['lr'],
-                              train_loss=epoch_train_loss, val_loss=epoch_val_loss,
-                              train_MAE=epoch_train_mae, val_MAE=epoch_val_mae,
-                              test_MAE=epoch_test_mae, train_AUC=train_auc, val_AUC=val_auc,
-                              test_AUC=test_auc)
-                """
-
-                per_epoch_time.append(time.time()-start)
-
-                # Saving checkpoint
-                ckpt_dir = os.path.join(root_ckpt_dir, "RUN_")
-                if not os.path.exists(ckpt_dir):
-                    os.makedirs(ckpt_dir)
-                
-                root_ckpt_dir_dataset = 'benchmarking-gnns-master/out/molecules_graph_regression/checkpoints'
-                ckpt_dir_dataset = os.path.join(root_ckpt_dir_dataset, "dataset_" + str(dataset_idx))
-                if not os.path.exists(ckpt_dir_dataset):
-                    os.makedirs(ckpt_dir_dataset)
-
-                torch.save(model.state_dict(), '{}.pkl'.format(ckpt_dir + "/epoch_" + str(epoch)))
-
-                files = glob.glob(ckpt_dir + '/*.pkl')
-                for file in files:
-                    epoch_nb = file.split('_')[-1]
-                    epoch_nb = int(epoch_nb.split('.')[0])
-                    if epoch_nb < epoch-1:
-                        os.remove(file)
-
-                scheduler.step(epoch_val_loss)
-
-                if optimizer.param_groups[0]['lr'] < params['min_lr']:
-                    print("\n!! LR EQUAL TO MIN LR SET.")
-                    break
-                
-                # Stop training after params['max_time'] hours
-                if time.time()-t0 > params['max_time']*3600:
-                    print('-' * 89)
-                    print("Max_time for training elapsed {:.2f} hours, so stopping".format(params['max_time']))
-                    break
-                
-                if train_auc > best_train_auc:
-                    best_train_auc = train_auc
-                if val_auc > best_val_auc:
-                    best_val_auc = val_auc
-
-                if test_auc > best_test_auc:
-                    best_test_auc = test_auc
-                    counter = 0  # 重置耐心计数器
-                    print(f"保存最新模型: {ckpt_dir_dataset}:best_model_dataset{str(dataset_idx)}_{DATASET_NAME}")
-                    torch.save(model.state_dict(), '{}.pth'.format(ckpt_dir_dataset + "/best_model_dataset"+str(dataset_idx)+"_"+ DATASET_NAME))  # 保存最优模型
-                else:
-                    counter += 1
-                    if counter >= patience:
-                        print(f"早停法激活，第 {epoch} 轮停止训练")
-                        break
-                
-    except KeyboardInterrupt:
-        print('-' * 89)
-        print('Exiting from training early because of KeyboardInterrupt')
-    
-    _, test_mae, Test_auc = evaluate_network(model, device, test_loader, epoch, net_params['num_tasks'], net_params['task_type'], dataset_idx, 'test')
-    _, train_mae, Train_auc = evaluate_network(model, device, val_loader, epoch, net_params['num_tasks'], net_params['task_type'], dataset_idx, 'val')
-    #输出最佳auc
-    print("Best train_AUC: {:.4f} Best test_auc: {:.4f} Best val_auc: {:.4f}".format(best_train_auc,best_test_auc,best_val_auc))
-    print("Test MAE: {:.4f}".format(test_mae))
-    print("Train MAE: {:.4f}".format(train_mae))
-    print("Convergence Time (Epochs): {:.4f}".format(epoch))
-    print("TOTAL TIME TAKEN: {:.4f}s".format(time.time()-t0))
-    print("AVG TIME PER EPOCH: {:.4f}s".format(np.mean(per_epoch_time)))
-
-    writer.close()
-
-    """
-        Write the results in out_dir/results folder
-    """
-    with open(write_file_name + '.txt', 'w') as f:
-        f.write("""Dataset: {},\nModel: {}\n\nparams={}\n\nnet_params={}\n\n{}\n\nTotal Parameters: {}\n\n
-    FINAL RESULTS\nTEST MAE: {:.4f}\nTRAIN MAE: {:.4f}\n\n
-    Convergence Time (Epochs): {:.4f}\nTotal Time Taken: {:.4f} hrs\nAverage Time Per Epoch: {:.4f} s\n\n\n"""\
-          .format(DATASET_NAME, MODEL_NAME, params, net_params, model, net_params['total_param'],
-                  test_mae, train_mae, epoch, (time.time()-t0)/3600, np.mean(per_epoch_time)))
         
 
 def test_model(model, test_loader, dataset_idx, net_params, device):
@@ -873,13 +527,7 @@ def main():
     net_params['total_param'] = view_model_param(MODEL_NAME, net_params)
     train_val_pipeline_interleaved(MODEL_NAME, datasets, params, net_params, dirs)
 
-    
-    
-    
-    
-    
-    
-    
+ 
 main()    
 
 
