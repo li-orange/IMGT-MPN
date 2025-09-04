@@ -7,6 +7,7 @@ This README provides an overview of the workflow, including environment setup, q
 We recommend creating a fresh conda/micromamba environment with Python 3.8. Two default environment files are provided:
 
 CPU only: `environment_cpu.yml`
+
 GPU (CUDA): `environment_gpu.yml`
 
 Create the environment with:
@@ -97,12 +98,9 @@ nets/load_net.py
 ### 5.1 Adding a New Model
 To add a new model:
 
-Create a new Python file in `nets/`, e.g. `my_gnn_net.py`.
-
-Define your model class inside the file.
-
-Update `load_net.py` to include your new model for easy access.
-
+1. Create a new Python file in `nets/`, e.g. `my_gnn_net.py`.
+2. Define your model class inside the file.
+3. Update `load_net.py` to include your new model for easy access.
 
 The model code is located in the  `nets/ ` file. This file is responsible for loading data, configuring the model, training the model, and producing outputs.
 
