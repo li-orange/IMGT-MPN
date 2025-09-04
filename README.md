@@ -2,45 +2,133 @@
 IMGT-MPNN is a molecular graph neural network framework for molecule property prediction. This README provides an overview of the workflow, including environment setup, quick start, configuration files, datasets, and how to use your own data.
 
 ## 1. Environment Setup
-We recommend starting from a fresh conda/micromamba environment with Python 3.8.
+We recommend creating a fresh conda/micromamba environment with Python 3.8.
 
+Two default environment files are provided:
+
+CPU only: `environment_cpu.yml`
+
+GPU (CUDA): `environment_gpu.yml`
+
+Create the environment with:
+
+```bash
+micromamba create -f environment_gpu.yml
+micromamba activate IMGT-MPNN
+```
 Please follow the detailed [INSTALL.md](INSTALL.md) guide for the step-by-step installation process, including required packages and the correct installation order.
 
-## 2. Run Main Program
+## 2. Quick Start
 Once the virtual environment is activated, run the main program:
-	 `python main.py `
-The program will load the dataset based on the configuration file and start training.
+```bash
+python main.py --config configs/molecules_graph_regression.json
+```
+This will:
+- Load the dataset
+- Build the model according to the config
+- Start training
 
-## 3. Modify Configuration Files
-### 3.1 Modify config File
-Example configuration file path: config/molecules_graph_regression.json
+You can switch to classification or other configs, e.g.:
+```bash
+python main.py --config configs/molecules_graph_classification.json
+```
+## 3. Configuration Files
+Configuration files are located in configs/.
 
-The configuration file includes settings for GPU, dataset, training parameters, model parameters, etc.
+Example: configs/molecules_graph_regression.json
 
-### 3.2 Other Configuration
-You can create your own configuration files as needed, ensuring the paths and formats are correct.
+They define:
 
-## 4. Add New Dataset
-### 4.1 Create Dataset Processing File
-In the  `prepare_molecules_xxx.ipynb ` file, create a new dataset processing script and modify the MoleculeDatasetDGL class to support the new dataset.
+- Device setup (CPU / GPU)
 
-### 4.2 Modify LoadData Function
-In the  `LoadData ` function, ensure that the paths and data processing methods for the new dataset are correct.
+- Dataset (path, preprocessing)
 
-### 4.3 Modify MoleculeDataset Class
-In the  `MoleculeDataset ` class, add support for the new dataset and ensure that it is properly processed and loaded.
+- Model parameters (layers, hidden size, etc.)
 
-Once training is complete, the dataset will be saved in pkl file format.
+- Training parameters (batch size, epochs, learning rate, etc.)
+
+To use your own dataset or model, simply copy and modify a JSON config file.
+
+## 4. Data
+The raw molecular datasets are located in `data/molecules/`.
+
+### 4.1 Preprocessed Datasets
+The repository already provides `.pkl` files that can be directly loaded for training.
+
+⚠️ Note: The `Lipophilicity` dataset is provided as a compressed archive.
+Please unzip it before use:
+
+```bash
+unzip Lipophilicity_8-1-1.zip
+```
+### 4.2 Processing from Scratch
+There are 7 **Jupyter Notebooks( `prepare_molecules_xxx.ipynb ` )** in the `data/` directory. 
+After installing the virtual environment, you can run them in order.
+Each notebook processes one dataset:
+
+1. Reads the original CSV file (SMILES and labels).
+
+2. Converts molecules into **DGL graphs** via the `MoleculeDatasetDGL()` function.
+
+3. Saves the processed dataset as `.pkl` files for training.
+
+### 4.3 Adding a New Dataset
+To quickly add your own dataset:
+
+- Create a new Jupyter Notebook under data/, following the structure of existing notebooks.
+
+- Create a folder for your dataset and place the raw CSV file (smiles + labels) inside.
+
+- Use the notebook to test whether SMILES can be correctly read and converted into DGL graphs.
+
+- Save the processed dataset as `.pkl`.
+
+- Register the dataset by modifying:
+
+  - `LoadData` function
+
+  - `MoleculeDatasetDGL()` function
+
+  - `MoleculeDataset` class
+
+This ensures your dataset is integrated in a consistent and standardized way.
+
 
 ### 4.4 Call New Dataset via Configuration File
 In the configuration file, modify the datasets field to include the new dataset name:
 	 `"datasets": ["NewDataset"] `
+  
 ## 5. Model
-The model code is located in the  `main_molecules_graph_regression.py ` file. This file is responsible for loading data, configuring the model, training the model, and producing outputs.
+
+Model implementations are located in the nets/ directory.
+They include various GNN architectures such as GCN, GAT, GIN, PNA, and MPNN.
+
+The unified model loading function is implemented in:
+
+```bash
+nets/load_net.py
+```
+
+### 5.1 Adding a New Model
+To add a new model:
+
+Create a new Python file in `nets/`, e.g. `my_gnn_net.py`.
+
+Define your model class inside the file.
+
+Update `load_net.py` to include your new model for easy access.
+
+
+The model code is located in the  `nets/ ` file. This file is responsible for loading data, configuring the model, training the model, and producing outputs.
 
 You can adjust the model structure as needed, such as modifying the number of layers or adding new layers.
 
-## 6. Notes
+## 6. Training
+Training scripts are located in the `train/` directory. The most important code file is `train_molecules_graph_regression.py`.
+
+
+## 7. Notes
 If you encounter out-of-memory errors, try reducing the batch size (batch_size) or using a different GPU.
 
 Ensure the paths and settings in the configuration file are correct to avoid errors when loading data or the model.
+
