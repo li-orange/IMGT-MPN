@@ -4,16 +4,16 @@ IMGT-MPNN is a molecular graph neural network framework for molecule property pr
 ## 1. Environment Setup
 We recommend starting from a fresh conda/micromamba environment with Python 3.8.
 
-👉 Please follow the detailed [INSTALL.md](INSTALL.md) guide for the step-by-step installation process, including required packages and the correct installation order.
+Please follow the detailed [INSTALL.md](INSTALL.md) guide for the step-by-step installation process, including required packages and the correct installation order.
 
 ## 2. Run Main Program
 Once the virtual environment is activated, run the main program:
-	 `python main_molecules_graph_regression.py `
+	 `python main.py `
 The program will load the dataset based on the configuration file and start training.
 
 ## 3. Modify Configuration Files
 ### 3.1 Modify config File
-Example configuration file path: config/molecules_graph_regression_GatedGCN_TOX21_6k.json
+Example configuration file path: config/molecules_graph_regression.json
 
 The configuration file includes settings for GPU, dataset, training parameters, model parameters, etc.
 
