@@ -1,17 +1,15 @@
 # IMGT-MPNN
-IMGT-MPNN is a molecular graph neural network framework for molecule property prediction. This README provides an overview of the workflow, including environment setup, quick start, configuration files, datasets, and how to use your own data.
+IMGT-MPNN is a molecular property prediction framework designed to capture both local chemical environments and global molecular structures. It combines an improved Graph Transformer network with a multi-task joint learning strategy. 
+
+This README provides an overview of the workflow, including environment setup, quick start, configuration files, datasets, and how to use your own data.
 
 ## 1. Environment Setup
-We recommend creating a fresh conda/micromamba environment with Python 3.8.
-
-Two default environment files are provided:
+We recommend creating a fresh conda/micromamba environment with Python 3.8. Two default environment files are provided:
 
 CPU only: `environment_cpu.yml`
-
 GPU (CUDA): `environment_gpu.yml`
 
 Create the environment with:
-
 ```bash
 micromamba create -f environment_gpu.yml
 micromamba activate IMGT-MPNN
@@ -40,11 +38,8 @@ Example: configs/molecules_graph_regression.json
 They define:
 
 - Device setup (CPU / GPU)
-
 - Dataset (path, preprocessing)
-
 - Model parameters (layers, hidden size, etc.)
-
 - Training parameters (batch size, epochs, learning rate, etc.)
 
 To use your own dataset or model, simply copy and modify a JSON config file.
@@ -76,23 +71,15 @@ Each notebook processes one dataset:
 To quickly add your own dataset:
 
 - Create a new Jupyter Notebook under data/, following the structure of existing notebooks.
-
 - Create a folder for your dataset and place the raw CSV file (smiles + labels) inside.
-
 - Use the notebook to test whether SMILES can be correctly read and converted into DGL graphs.
-
 - Save the processed dataset as `.pkl`.
-
 - Register the dataset by modifying:
-
   - `LoadData` function
-
   - `MoleculeDatasetDGL()` function
-
   - `MoleculeDataset` class
 
 This ensures your dataset is integrated in a consistent and standardized way.
-
 
 ### 4.4 Call New Dataset via Configuration File
 In the configuration file, modify the datasets field to include the new dataset name:
@@ -100,11 +87,9 @@ In the configuration file, modify the datasets field to include the new dataset 
   
 ## 5. Model
 
-Model implementations are located in the nets/ directory.
-They include various GNN architectures such as GCN, GAT, GIN, PNA, and MPNN.
+Model implementations are located in the `nets/` directory. They include various GNN architectures such as GCN, GAT, GIN, PNA, and MPNN.
 
 The unified model loading function is implemented in:
-
 ```bash
 nets/load_net.py
 ```
