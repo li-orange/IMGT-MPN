@@ -45,7 +45,6 @@ dependencies:
       - torch==1.10.0+cpu
       - torchvision==0.11.0+cpu
       - torchaudio==0.10.0+cpu
-      - tensorboard==2.16.2
       - ogb==1.3.6
       - torch-geometric==2.1.0
       - torch-scatter==2.0.9
