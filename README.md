@@ -1,7 +1,9 @@
 # Molecular Property Prediction Based on Improved Graph Transformer Network and Multi-Task Joint Learning Strategy
-IMGT-MPNN is a molecular property prediction framework designed to capture both local chemical environments and global molecular structures. It combines an improved Graph Transformer network with a multi-task joint learning strategy. 
+Thank you for your interest in this database, which serves as a supplement to the paper currently being prepared for publication. 
 
-This README provides an overview of the workflow, including environment setup, quick start, configuration files, datasets, and how to use your own data.
+**IMGT-MPNN** is a molecular property prediction framework designed to capture both local chemical environments and global molecular structures. It combines an improved Graph Transformer network with a multi-task joint learning strategy. 
+
+This **README** provides an overview of the workflow, including environment setup, quick start, configuration files, datasets, and how to use your own data.
 
 ## 1. Environment Setup
 We recommend creating a fresh conda/micromamba environment with Python 3.8. Two default environment files are provided:
